@@ -21,10 +21,10 @@ import { Input } from "@/components/ui/input";
 
 const Sidebar = () => {
   const navItems = [
-    { icon: LayoutDashboard, label: "Dashboard", active: true },
-    { icon: FolderGit2, label: "Projects" },
-    { icon: MessageSquare, label: "AI Chat" },
-    { icon: Settings, label: "Settings" },
+    { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", active: true },
+    { icon: FolderGit2, label: "Projects", href: "/dashboard" },
+    { icon: MessageSquare, label: "AI Chat", href: "/chat" },
+    { icon: Settings, label: "Settings", href: "/dashboard" },
   ];
 
   return (
@@ -42,8 +42,9 @@ const Sidebar = () => {
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-2">
         {navItems.map((item) => (
-          <button
+          <Link
             key={item.label}
+            to={item.href || '#'}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
               item.active 
                 ? "bg-sage-light text-sage-dark font-medium" 
@@ -52,7 +53,7 @@ const Sidebar = () => {
           >
             <item.icon className="w-5 h-5" />
             {item.label}
-          </button>
+          </Link>
         ))}
       </nav>
 
@@ -183,9 +184,11 @@ const Dashboard = () => {
                 Continue building your projects with AI assistance.
               </p>
               <div className="flex items-center gap-4">
-                <Button variant="hero" size="lg">
-                  <MessageSquare className="w-4 h-4" />
-                  Start AI Chat
+                <Button variant="hero" size="lg" asChild>
+                  <Link to="/chat">
+                    <MessageSquare className="w-4 h-4" />
+                    Start AI Chat
+                  </Link>
                 </Button>
                 <Button variant="glass" size="lg">
                   <Github className="w-4 h-4" />
