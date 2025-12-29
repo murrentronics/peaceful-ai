@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Bot, User, Loader2, Sparkles, Copy, Check } from 'lucide-react';
+import { Send, Bot, User, Loader2, Sparkles, Copy, Check, Key } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { streamChatCompletion, type ChatMessage } from '@/lib/openrouter';
@@ -19,6 +20,8 @@ const ChatInterface: React.FC = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('openrouter_api_key') || '');
+  const [showApiKeyInput, setShowApiKeyInput] = useState(!import.meta.env.VITE_OPENROUTER_API_KEY && !localStorage.getItem('openrouter_api_key'));
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
@@ -73,7 +76,8 @@ const ChatInterface: React.FC = () => {
             return [...prev, { id: assistantId, role: 'assistant', content: assistantContent }];
           });
         },
-        () => setIsLoading(false)
+        () => setIsLoading(false),
+        apiKey || undefined
       );
     } catch (error) {
       setIsLoading(false);
@@ -150,7 +154,42 @@ const ChatInterface: React.FC = () => {
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] max-w-4xl mx-auto">
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-        {messages.length === 0 ? (
+        {showApiKeyInput ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center h-full text-center"
+          >
+            <div className="w-16 h-16 rounded-2xl bg-gradient-peaceful flex items-center justify-center mb-4">
+              <Key className="h-8 w-8 text-primary-foreground" />
+            </div>
+            <h2 className="text-2xl font-semibold mb-2">Enter your OpenRouter API Key</h2>
+            <p className="text-muted-foreground max-w-md mb-6">
+              Get a free API key from <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-sage underline">openrouter.ai/keys</a>
+            </p>
+            <div className="flex gap-2 w-full max-w-md">
+              <Input
+                type="password"
+                placeholder="sk-or-..."
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                className="flex-1"
+              />
+              <Button
+                onClick={() => {
+                  if (apiKey.trim()) {
+                    localStorage.setItem('openrouter_api_key', apiKey.trim());
+                    setShowApiKeyInput(false);
+                    toast({ title: 'API key saved', description: 'You can now start chatting!' });
+                  }
+                }}
+                disabled={!apiKey.trim()}
+              >
+                Save
+              </Button>
+            </div>
+          </motion.div>
+        ) : messages.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

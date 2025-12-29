@@ -2,51 +2,7 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sparkles, ArrowRight, Github, Zap, Shield, Cloud } from "lucide-react";
-
-const Navbar = () => {
-  return (
-    <motion.nav
-      initial={{ y: -20, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="fixed top-0 left-0 right-0 z-50 px-6 py-4"
-    >
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl gradient-sage flex items-center justify-center shadow-soft">
-            <Sparkles className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <span className="text-xl font-bold text-foreground">Peaceful</span>
-        </Link>
-        
-        <div className="hidden md:flex items-center gap-8">
-          <Link to="#features" className="text-muted-foreground hover:text-foreground transition-colors">
-            Features
-          </Link>
-          <Link to="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">
-            Pricing
-          </Link>
-          <Link to="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
-            Dashboard
-          </Link>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/auth">Sign in</Link>
-          </Button>
-          <Button variant="hero" size="sm" asChild>
-            <Link to="/auth?mode=signup">
-              Get Started
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </Button>
-        </div>
-      </div>
-    </motion.nav>
-  );
-};
-
+import Header from "@/components/Header";
 const FloatingShapes = () => (
   <div className="absolute inset-0 overflow-hidden pointer-events-none">
     <div className="absolute top-20 left-10 w-72 h-72 bg-sage-light rounded-full blur-3xl opacity-60 animate-float" />
@@ -320,11 +276,13 @@ const Footer = () => {
 const Index = () => {
   return (
     <main className="min-h-screen bg-background">
-      <Navbar />
-      <HeroSection />
-      <FeaturesSection />
-      <CTASection />
-      <Footer />
+      <Header />
+      <div className="pt-16">
+        <HeroSection />
+        <FeaturesSection />
+        <CTASection />
+        <Footer />
+      </div>
     </main>
   );
 };
