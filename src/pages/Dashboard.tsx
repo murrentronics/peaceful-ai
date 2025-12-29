@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
   Sparkles, 
@@ -18,6 +18,10 @@ import {
   Zap
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { supabase } from "@/lib/supabase";
+import { User } from "@supabase/supabase-js";
+import { toast } from "sonner";
+import Header from "@/components/Header";
 
 const Sidebar = () => {
   const navItems = [
@@ -117,6 +121,44 @@ const ProjectCard = ({
 );
 
 const Dashboard = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
+        setLoading(false);
+        if (!session) {
+          navigate("/auth");
+        }
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+      if (!session) {
+        navigate("/auth");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error("Error signing out");
+    } else {
+      toast.success("Signed out successfully");
+      navigate("/");
+    }
+  };
+
   const projects = [
     {
       name: "E-commerce Platform",
@@ -138,8 +180,18 @@ const Dashboard = () => {
     },
   ];
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-sage border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex h-screen bg-background">
+    <div className="min-h-screen bg-background">
+      <Header />
+      <div className="flex">
       <Sidebar />
       
       <main className="flex-1 overflow-auto">
@@ -253,6 +305,7 @@ const Dashboard = () => {
         </div>
       </main>
     </div>
+  </div>
   );
 };
 

@@ -1,4 +1,3 @@
-const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
 export type ChatMessage = {
@@ -9,12 +8,19 @@ export type ChatMessage = {
 export const streamChatCompletion = async (
   messages: ChatMessage[],
   onDelta: (text: string) => void,
-  onDone: () => void
+  onDone: () => void,
+  apiKey?: string
 ) => {
+  const key = apiKey || import.meta.env.VITE_OPENROUTER_API_KEY;
+  
+  if (!key) {
+    throw new Error('OpenRouter API key not configured. Please add VITE_OPENROUTER_API_KEY to your environment variables or enter your API key in the chat settings.');
+  }
+
   const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+      'Authorization': `Bearer ${key}`,
       'Content-Type': 'application/json',
       'HTTP-Referer': window.location.origin,
       'X-Title': 'Peaceful AI',
@@ -35,7 +41,12 @@ export const streamChatCompletion = async (
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`OpenRouter API error: ${error}`);
+    try {
+      const parsed = JSON.parse(error);
+      throw new Error(parsed.error?.message || 'OpenRouter API error');
+    } catch {
+      throw new Error(`OpenRouter API error: ${error}`);
+    }
   }
 
   const reader = response.body?.getReader();
