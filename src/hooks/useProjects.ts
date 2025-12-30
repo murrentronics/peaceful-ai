@@ -120,7 +120,7 @@ export function useProjects(userId: string | undefined) {
   }, [toast]);
 
   // Add a message to current project
-  const addMessage = useCallback(async (role: 'user' | 'assistant', content: string) => {
+  const addMessage = useCallback(async (role: 'user' | 'assistant', content: string, isFirstMessage: boolean = false) => {
     if (!currentProjectId) return null;
 
     const { data, error } = await supabase
@@ -136,11 +136,24 @@ export function useProjects(userId: string | undefined) {
 
     setMessages(prev => [...prev, data]);
     
-    // Update project's updated_at
-    await supabase
-      .from('projects')
-      .update({ updated_at: new Date().toISOString() })
-      .eq('id', currentProjectId);
+    // Auto-name project based on first user message
+    if (isFirstMessage && role === 'user') {
+      const autoName = content.slice(0, 50) + (content.length > 50 ? '...' : '');
+      await supabase
+        .from('projects')
+        .update({ name: autoName, updated_at: new Date().toISOString() })
+        .eq('id', currentProjectId);
+      
+      setProjects(prev => prev.map(p => 
+        p.id === currentProjectId ? { ...p, name: autoName } : p
+      ));
+    } else {
+      // Just update updated_at
+      await supabase
+        .from('projects')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', currentProjectId);
+    }
 
     return data;
   }, [currentProjectId]);
