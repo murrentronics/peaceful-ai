@@ -8,39 +8,29 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { streamChatCompletion, type ChatMessage } from '@/lib/openrouter';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
-import type { Message } from '@/hooks/useProjects';
 
-interface ChatInterfaceProps {
-  messages: Message[];
-  currentProjectId: string | null;
-  onAddMessage: (role: 'user' | 'assistant', content: string) => Promise<{ id: string } | null>;
-  onUpdateMessage: (id: string, content: string) => Promise<void>;
-  onCreateProject: () => Promise<{ id: string } | null>;
-}
+type Message = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+};
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({
-  messages,
-  currentProjectId,
-  onAddMessage,
-  onUpdateMessage,
-  onCreateProject,
-}) => {
+const ChatInterface: React.FC = () => {
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('openrouter_api_key') || '');
   const [showApiKeyInput, setShowApiKeyInput] = useState(!import.meta.env.VITE_OPENROUTER_API_KEY && !localStorage.getItem('openrouter_api_key'));
-  const [streamingContent, setStreamingContent] = useState('');
-  const [streamingId, setStreamingId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, streamingContent]);
+  }, [messages]);
 
   const handleCopy = async (content: string, id: string) => {
     await navigator.clipboard.writeText(content);
@@ -52,65 +42,45 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     e?.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    const userContent = input.trim();
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: input.trim(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
 
+    const assistantId = crypto.randomUUID();
+    let assistantContent = '';
+
     try {
-      // Create project if none selected
-      let projectId = currentProjectId;
-      if (!projectId) {
-        const project = await onCreateProject();
-        if (!project) {
-          setIsLoading(false);
-          return;
-        }
-        projectId = project.id;
-      }
-
-      // Save user message
-      await onAddMessage('user', userContent);
-
-      // Prepare chat history
       const chatHistory: ChatMessage[] = messages.map(m => ({
         role: m.role,
         content: m.content,
       }));
-      chatHistory.push({ role: 'user', content: userContent });
-
-      let assistantContent = '';
-      let assistantMessageId: string | null = null;
+      chatHistory.push({ role: 'user', content: userMessage.content });
 
       await streamChatCompletion(
         chatHistory,
-        async (delta) => {
+        (delta) => {
           assistantContent += delta;
-          setStreamingContent(assistantContent);
-          
-          // Create assistant message on first chunk
-          if (!assistantMessageId) {
-            const msg = await onAddMessage('assistant', assistantContent);
-            if (msg) {
-              assistantMessageId = msg.id;
-              setStreamingId(msg.id);
+          setMessages(prev => {
+            const last = prev[prev.length - 1];
+            if (last?.id === assistantId) {
+              return prev.map(m => 
+                m.id === assistantId ? { ...m, content: assistantContent } : m
+              );
             }
-          }
+            return [...prev, { id: assistantId, role: 'assistant', content: assistantContent }];
+          });
         },
-        async () => {
-          // Final update with complete content
-          if (assistantMessageId) {
-            await onUpdateMessage(assistantMessageId, assistantContent);
-          }
-          setStreamingContent('');
-          setStreamingId(null);
-          setIsLoading(false);
-        },
+        () => setIsLoading(false),
         apiKey || undefined
       );
     } catch (error) {
       setIsLoading(false);
-      setStreamingContent('');
-      setStreamingId(null);
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to get response',
@@ -181,13 +151,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     return parts.length > 0 ? parts : <span className="whitespace-pre-wrap">{content}</span>;
   };
 
-  // Combine saved messages with streaming content
-  const displayMessages = messages.map(m => 
-    m.id === streamingId ? { ...m, content: streamingContent || m.content } : m
-  );
-
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-[calc(100vh-4rem)] max-w-4xl mx-auto">
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
         {showApiKeyInput ? (
           <motion.div
@@ -224,7 +189,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               </Button>
             </div>
           </motion.div>
-        ) : !currentProjectId && displayMessages.length === 0 ? (
+        ) : messages.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -235,13 +200,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             </div>
             <h2 className="text-2xl font-semibold mb-2">Welcome to Peaceful AI</h2>
             <p className="text-muted-foreground max-w-md">
-              I'm here to help you write, debug, and understand code. Start a new chat or select one from the sidebar!
+              I'm here to help you write, debug, and understand code. Ask me anything!
             </p>
           </motion.div>
         ) : (
-          <div className="space-y-4 max-w-4xl mx-auto">
+          <div className="space-y-4">
             <AnimatePresence mode="popLayout">
-              {displayMessages.map((message) => (
+              {messages.map((message) => (
                 <motion.div
                   key={message.id}
                   initial={{ opacity: 0, y: 10 }}
@@ -275,7 +240,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 </motion.div>
               ))}
             </AnimatePresence>
-            {isLoading && !streamingContent && (
+            {isLoading && messages[messages.length - 1]?.role === 'user' && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -294,8 +259,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </ScrollArea>
 
       <div className="p-4 border-t border-border/50">
-        <form onSubmit={handleSubmit} className="flex gap-2 max-w-4xl mx-auto">
+        <form onSubmit={handleSubmit} className="flex gap-2">
           <Textarea
+            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
