@@ -14,7 +14,7 @@ import type { Message } from '@/hooks/useProjects';
 interface ChatInterfaceProps {
   messages: Message[];
   currentProjectId: string | null;
-  onAddMessage: (role: 'user' | 'assistant', content: string) => Promise<{ id: string } | null>;
+  onAddMessage: (role: 'user' | 'assistant', content: string, isFirstMessage?: boolean) => Promise<{ id: string } | null>;
   onUpdateMessage: (id: string, content: string) => Promise<void>;
   onCreateProject: () => Promise<{ id: string } | null>;
 }
@@ -68,8 +68,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         projectId = project.id;
       }
 
-      // Save user message
-      await onAddMessage('user', userContent);
+      // Save user message (mark as first message if no existing messages)
+      const isFirstMessage = messages.length === 0;
+      await onAddMessage('user', userContent, isFirstMessage);
 
       // Prepare chat history
       const chatHistory: ChatMessage[] = messages.map(m => ({
